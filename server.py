@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import openai
+import openai.error  # Correctly importing OpenAI error handling
 import os
 import logging
 
@@ -61,12 +62,7 @@ def chat():
 
         return jsonify({"response": result})
 
-    import openai.error  # Ensure OpenAI errors are properly referenced
-
-...
-
-except openai.error.OpenAIError as e:  # Use the correct reference to OpenAIError
-
+    except openai.error.OpenAIError as e:  # Correct reference
         logging.error(f"❌ OpenAI API Error: {str(e)}")
         return jsonify({"error": "OpenAI API error", "details": str(e)}), 500
 
@@ -76,4 +72,3 @@ except openai.error.OpenAIError as e:  # Use the correct reference to OpenAIErro
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)
-
