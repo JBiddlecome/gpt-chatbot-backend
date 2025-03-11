@@ -4,13 +4,32 @@ import openai
 import os
 
 app = Flask(__name__)
-CORS(app, resources={r"/chat": {"origins": "*"}})  # Allow all origins for /chat
+
+# Enable CORS for all origins and methods
+CORS(app, resources={r"/chat": {"origins": "*"}})
 
 # Set OpenAI API Key from environment variable
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-@app.route("/chat", methods=["POST"])
+@app.route("/", methods=["GET"])
+def home():
+    """Debug route to check if backend is running and list available endpoints."""
+    return jsonify({
+        "message": "Backend is running",
+        "available_routes": ["/chat"]
+    })
+
+@app.route("/chat", methods=["POST", "OPTIONS"])
 def chat():
+    """Handles incoming chat requests and forwards them to OpenAI."""
+    if request.method == "OPTIONS":
+        # Handle preflight request for CORS
+        response = jsonify({"message": "CORS preflight successful"})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type")
+        return response, 200
+
     data = request.json
     user_message = data.get("message", "")
 
@@ -23,7 +42,8 @@ def chat():
             messages=[{"role": "user", "content": user_message}]
         )
 
-        return jsonify({"response": response["choices"][0]["message"]["content"]})
+        result = response["choices"][0]["message"]["content"]
+        return jsonify({"response": result})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
