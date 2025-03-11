@@ -1,7 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import openai
-from openai import OpenAIError  # Corrected import
 import os
 import logging
 
@@ -13,11 +12,12 @@ CORS(app, resources={r"/chat": {"origins": "*"}})
 
 # Ensure OpenAI API key is set
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-if not OPENAI_API_KEY:
-    logging.error("❌ ERROR: OpenAI API key is missing! Set OPENAI_API_KEY in Render.")
+ASSISTANT_ID = os.getenv("OPENAI_ASSISTANT_ID")  # Your Assistant ID
+if not OPENAI_API_KEY or not ASSISTANT_ID:
+    logging.error("❌ ERROR: Missing OpenAI API Key or Assistant ID. Set them in Render.")
     exit(1)
 
-# Create OpenAI client (New API format)
+# Create OpenAI client
 client = openai.OpenAI(api_key=OPENAI_API_KEY)
 
 @app.route("/", methods=["GET"])
@@ -30,7 +30,7 @@ def home():
 
 @app.route("/chat", methods=["POST", "OPTIONS"])
 def chat():
-    """Handles incoming chat requests and forwards them to OpenAI."""
+    """Handles incoming chat requests and forwards them to OpenAI Assistant API."""
     if request.method == "OPTIONS":
         response = jsonify({"message": "CORS preflight successful"})
         response.headers.add("Access-Control-Allow-Origin", "*")
@@ -49,26 +49,38 @@ def chat():
         user_message = data["message"]
         logging.debug("💬 User message: %s", user_message)
 
-        # Corrected OpenAI API call
-        response = client.chat.completions.create(
-            model="gpt-4",
-            messages=[{"role": "user", "content": user_message}]
+        # Use OpenAI Assistant linked to the Vector Store
+        thread = client.beta.threads.create()
+        message = client.beta.threads.messages.create(
+            thread_id=thread.id,
+            role="user",
+            content=user_message
         )
 
-        # Debug log for response
-        logging.debug("🔍 OpenAI Raw Response: %s", response)
+        # Run assistant to retrieve responses from vector-embedded files
+        run = client.beta.threads.runs.create(
+            thread_id=thread.id,
+            assistant_id=ASSISTANT_ID
+        )
 
-        if not response.choices or len(response.choices) == 0:
-            logging.error("❌ ERROR: Unexpected OpenAI response format: %s", response)
-            return jsonify({"error": "Invalid OpenAI response"}), 500
+        # Wait for the run to complete (Polling)
+        import time
+        while run.status not in ["completed", "failed"]:
+            time.sleep(2)
+            run = client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
 
-        # Extracting content safely from OpenAI response
-        result = response.choices[0].message.content
-        logging.debug("🤖 GPT Response: %s", result)
+        if run.status == "failed":
+            logging.error("❌ ERROR: Assistant API run failed")
+            return jsonify({"error": "Assistant API failed"}), 500
 
-        return jsonify({"response": result})
+        # Get the Assistant's response
+        messages = client.beta.threads.messages.list(thread_id=thread.id)
+        response_text = messages.data[0].content[0].text.value
 
-    except OpenAIError as e:  # Ensure proper exception handling
+        logging.debug("🤖 Assistant Response: %s", response_text)
+        return jsonify({"response": response_text})
+
+    except openai.OpenAIError as e:
         logging.error(f"❌ OpenAI API Error: {str(e)}")
         return jsonify({"error": "OpenAI API error", "details": str(e)}), 500
 
