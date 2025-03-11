@@ -63,8 +63,8 @@ def chat():
         return jsonify({"response": result})
 
     except OpenAIError as e:  # Use OpenAIError directly
-    logging.error(f"❌ OpenAI API Error: {str(e)}")
-    return jsonify({"error": "OpenAI API error", "details": str(e)}), 500
+        logging.error(f"❌ OpenAI API Error: {str(e)}")
+        return jsonify({"error": "OpenAI API error", "details": str(e)}), 500
 
 
     except Exception as e:
