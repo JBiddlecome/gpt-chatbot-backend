@@ -61,7 +61,12 @@ def chat():
 
         return jsonify({"response": result})
 
-    except openai.error.OpenAIError as e:
+    import openai.error  # Ensure OpenAI errors are properly referenced
+
+...
+
+except openai.error.OpenAIError as e:  # Use the correct reference to OpenAIError
+
         logging.error(f"❌ OpenAI API Error: {str(e)}")
         return jsonify({"error": "OpenAI API error", "details": str(e)}), 500
 
