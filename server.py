@@ -48,7 +48,9 @@ def chat():
         user_message = data["message"]
         logging.debug("💬 User message: %s", user_message)
 
-        response = openai.ChatCompletion.create(
+        client = openai.OpenAI(api_key=OPENAI_API_KEY)
+
+        response = client.chat.completions.create(
             model="gpt-4",
             messages=[{"role": "user", "content": user_message}]
         )
