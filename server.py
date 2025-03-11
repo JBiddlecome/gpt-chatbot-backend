@@ -1,10 +1,10 @@
 from flask import Flask, request, jsonify
-import openai
 from flask_cors import CORS
+import openai
 import os
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all domains
+CORS(app, resources={r"/chat": {"origins": "*"}})  # Allow all origins for /chat
 
 # Set OpenAI API Key from environment variable
 openai.api_key = os.getenv("OPENAI_API_KEY")
