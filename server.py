@@ -43,7 +43,7 @@ def chat():
         assistant_id = data.get("assistant_id", DEFAULT_ASSISTANT_ID)
 
         # Ensure the assistant_id is valid
-        VALID_ASSISTANTS = ["asst_HwvvKaHr2KK96OG4yrEQODAr", "asst_1tMmOiBVSiXfWVZzH0jEVVM6"]
+        VALID_ASSISTANTS = ["asst_HwvvKaHr2KK96OG4yrEQODAr", "asst_1tMmOiBVSiXfWVZzH0jEVVM6", "asst_Vwwf9mz2Dgp7Ronqoo4Vr3iW", "asst_myeXUDSjkOVYOD49KywewOql"]
         if assistant_id not in VALID_ASSISTANTS:
             logging.error(f"❌ ERROR: Invalid Assistant ID {assistant_id}")
             return jsonify({"error": "Invalid Assistant ID"}), 400
