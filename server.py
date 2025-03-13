@@ -12,25 +12,18 @@ CORS(app, resources={r"/chat": {"origins": "*"}})
 
 # Ensure OpenAI API key is set
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-ASSISTANT_ID = os.getenv("OPENAI_ASSISTANT_ID")  # Your Assistant ID
-if not OPENAI_API_KEY or not ASSISTANT_ID:
-    logging.error("❌ ERROR: Missing OpenAI API Key or Assistant ID. Set them in Render.")
+DEFAULT_ASSISTANT_ID = os.getenv("OPENAI_ASSISTANT_ID")  # Default assistant
+
+if not OPENAI_API_KEY:
+    logging.error("❌ ERROR: OpenAI API key is missing! Set OPENAI_API_KEY in Render.")
     exit(1)
 
 # Create OpenAI client
 client = openai.OpenAI(api_key=OPENAI_API_KEY)
 
-@app.route("/", methods=["GET"])
-def home():
-    """Debug route to check if backend is running."""
-    return jsonify({
-        "message": "Backend is running",
-        "available_routes": ["/chat"]
-    })
-
 @app.route("/chat", methods=["POST", "OPTIONS"])
 def chat():
-    """Handles incoming chat requests and forwards them to OpenAI Assistant API."""
+    """Handles chat requests and supports multiple assistants."""
     if request.method == "OPTIONS":
         response = jsonify({"message": "CORS preflight successful"})
         response.headers.add("Access-Control-Allow-Origin", "*")
@@ -47,7 +40,10 @@ def chat():
             return jsonify({"error": "Invalid request format"}), 400
 
         user_message = data["message"]
-        logging.debug("💬 User message: %s", user_message)
+        assistant_id = data.get("assistant_id", DEFAULT_ASSISTANT_ID)  # Allow dynamic assistant switching
+
+        logging.debug(f"💬 User message: {user_message}")
+        logging.debug(f"🤖 Using Assistant ID: {assistant_id}")
 
         # Use OpenAI Assistant linked to the Vector Store
         thread = client.beta.threads.create()
@@ -60,7 +56,7 @@ def chat():
         # Run assistant to retrieve responses from vector-embedded files
         run = client.beta.threads.runs.create(
             thread_id=thread.id,
-            assistant_id=ASSISTANT_ID
+            assistant_id=assistant_id
         )
 
         # Wait for the run to complete (Polling)
