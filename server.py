@@ -45,8 +45,8 @@ def chat():
         # Ensure the assistant_id is valid
         VALID_ASSISTANTS = ["asst_ABC123XYZ456", "asst_DEF789LMN012", "asst_GHI345PQR678"]
         if assistant_id not in VALID_ASSISTANTS:
-        logging.error(f"❌ ERROR: Invalid Assistant ID {assistant_id}")
-        return jsonify({"error": "Invalid Assistant ID"}), 400
+            logging.error(f"❌ ERROR: Invalid Assistant ID {assistant_id}")
+            return jsonify({"error": "Invalid Assistant ID"}), 400
 
         logging.debug(f"💬 User message: {user_message}")
         logging.debug(f"🤖 Using Assistant ID: {assistant_id}")
