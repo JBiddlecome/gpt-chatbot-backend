@@ -1,8 +1,10 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 import openai
 import os
 import logging
+import json
+import time
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -23,7 +25,7 @@ client = openai.OpenAI(api_key=OPENAI_API_KEY)
 
 @app.route("/chat", methods=["POST", "OPTIONS"])
 def chat():
-    """Handles chat requests and supports multiple assistants."""
+    """Handles chat requests with real-time streaming responses."""
     if request.method == "OPTIONS":
         response = jsonify({"message": "CORS preflight successful"})
         response.headers.add("Access-Control-Allow-Origin", "*")
@@ -43,7 +45,12 @@ def chat():
         assistant_id = data.get("assistant_id", DEFAULT_ASSISTANT_ID)
 
         # Ensure the assistant_id is valid
-        VALID_ASSISTANTS = ["asst_HwvvKaHr2KK96OG4yrEQODAr", "asst_1tMmOiBVSiXfWVZzH0jEVVM6", "asst_Vwwf9mz2Dgp7Ronqoo4Vr3iW", "asst_myeXUDSjkOVYOD49KywewOql"]
+        VALID_ASSISTANTS = [
+            "asst_HwvvKaHr2KK96OG4yrEQODAr",
+            "asst_1tMmOiBVSiXfWVZzH0jEVVM6",
+            "asst_Vwwf9mz2Dgp7Ronqoo4Vr3iW",
+            "asst_myeXUDSjkOVYOD49KywewOql"
+        ]
         if assistant_id not in VALID_ASSISTANTS:
             logging.error(f"❌ ERROR: Invalid Assistant ID {assistant_id}")
             return jsonify({"error": "Invalid Assistant ID"}), 400
@@ -51,36 +58,39 @@ def chat():
         logging.debug(f"💬 User message: {user_message}")
         logging.debug(f"🤖 Using Assistant ID: {assistant_id}")
 
-        # Use OpenAI Assistant linked to the Vector Store
+        # Create a new thread
         thread = client.beta.threads.create()
-        message = client.beta.threads.messages.create(
+
+        # Add user message to thread
+        client.beta.threads.messages.create(
             thread_id=thread.id,
             role="user",
             content=user_message
         )
 
-        # Run assistant to retrieve responses from vector-embedded files
+        # Start the assistant run
         run = client.beta.threads.runs.create(
             thread_id=thread.id,
-            assistant_id=assistant_id
+            assistant_id=assistant_id,
+            stream=True  # Enable streaming
         )
 
-        # Wait for the run to complete (Polling)
-        import time
-        while run.status not in ["completed", "failed"]:
-            time.sleep(2)
-            run = client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
+        def stream_response():
+            """Generator function to stream the OpenAI response in real-time."""
+            try:
+                for chunk in run:
+                    if chunk.get("error"):
+                        yield json.dumps({"error": chunk["error"]["message"]}) + "\n"
+                        return
+                    if "response" in chunk:
+                        text_chunk = chunk["response"]
+                        yield json.dumps({"response": text_chunk}) + "\n"
+                        time.sleep(0.05)  # Simulate natural typing delay
+            except Exception as e:
+                logging.error(f"❌ Streaming Error: {str(e)}")
+                yield json.dumps({"error": "Streaming failed"}) + "\n"
 
-        if run.status == "failed":
-            logging.error("❌ ERROR: Assistant API run failed")
-            return jsonify({"error": "Assistant API failed"}), 500
-
-        # Get the Assistant's response
-        messages = client.beta.threads.messages.list(thread_id=thread.id)
-        response_text = messages.data[0].content[0].text.value
-
-        logging.debug("🤖 Assistant Response: %s", response_text)
-        return jsonify({"response": response_text})
+        return Response(stream_response(), content_type="text/event-stream")
 
     except openai.OpenAIError as e:
         logging.error(f"❌ OpenAI API Error: {str(e)}")
