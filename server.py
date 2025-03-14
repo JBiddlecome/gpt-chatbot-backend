@@ -71,21 +71,33 @@ def chat():
         # Start the assistant run
         run = client.beta.threads.runs.create(
             thread_id=thread.id,
-            assistant_id=assistant_id,
-            stream=True  # Enable streaming
+            assistant_id=assistant_id
         )
 
+        # Wait for the assistant to start streaming
         def stream_response():
-            """Generator function to stream the OpenAI response in real-time."""
+            """Generator function to stream OpenAI's response in real-time."""
             try:
-                for chunk in run:
-                    if chunk.get("error"):
-                        yield json.dumps({"error": chunk["error"]["message"]}) + "\n"
+                # Poll until the run completes
+                while True:
+                    time.sleep(1)  # Prevents overloading OpenAI with requests
+                    run_status = client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
+                    
+                    if run_status.status == "completed":
+                        break
+                    elif run_status.status == "failed":
+                        yield json.dumps({"error": "Assistant API run failed"}) + "\n"
                         return
-                    if "response" in chunk:
-                        text_chunk = chunk["response"]
-                        yield json.dumps({"response": text_chunk}) + "\n"
-                        time.sleep(0.05)  # Simulate natural typing delay
+
+                # Retrieve the messages from OpenAI
+                messages = client.beta.threads.messages.list(thread_id=thread.id)
+                response_text = messages.data[0].content[0].text.value
+
+                # Stream response word by word
+                for word in response_text.split():
+                    yield json.dumps({"response": word + " "}) + "\n"
+                    time.sleep(0.05)  # Simulate natural typing delay
+
             except Exception as e:
                 logging.error(f"❌ Streaming Error: {str(e)}")
                 yield json.dumps({"error": "Streaming failed"}) + "\n"
