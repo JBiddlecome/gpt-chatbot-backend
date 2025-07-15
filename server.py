@@ -46,6 +46,7 @@ def chat():
 
         # Ensure the assistant_id is valid
         VALID_ASSISTANTS = [
+            "asst_ZyXJMQwA8MulRePeac9yxyJf",
             "asst_HwvvKaHr2KK96OG4yrEQODAr",
             "asst_1tMmOiBVSiXfWVZzH0jEVVM6",
             "asst_Vwwf9mz2Dgp7Ronqoo4Vr3iW",
