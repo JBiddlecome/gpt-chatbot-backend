@@ -50,7 +50,11 @@ def chat():
             "asst_HwvvKaHr2KK96OG4yrEQODAr",
             "asst_1tMmOiBVSiXfWVZzH0jEVVM6",
             "asst_Vwwf9mz2Dgp7Ronqoo4Vr3iW",
-            "asst_myeXUDSjkOVYOD49KywewOql"
+            "asst_myeXUDSjkOVYOD49KywewOql",
+            "asst_6eb0i7fRkgfe0YSnHNxHberr",
+            "asst_7lyLvPhSSTRpBracIVDMQtCX",
+            "asst_VgoKfFR5tyuzfsKIsdExS5jm",
+            "asst_ioLttRdyfMxlFAuwkAcxImsm"
         ]
         if assistant_id not in VALID_ASSISTANTS:
             logging.error(f"❌ ERROR: Invalid Assistant ID {assistant_id}")
